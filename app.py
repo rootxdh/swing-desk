@@ -1038,7 +1038,7 @@ with tab_ipo:
                         st.caption("Place the CNC delivery order in Kite only after it lists and trades inside the zone. "
                                    "The initial stop is mandatory; then manage the trade with the trail ladder below - "
                                    "Kite stops don't ratchet by themselves, so raise the SL-M/GTT after each new high.")
-                        with st.expander("Place buy order (CNC delivery)", key="ipo_order_exp_" + pick_s):
+                        with st.expander("Place buy order (CNC delivery)"):
                             _is_sme = bool(r.get("cat") == "SME") or bool(r.get("lot", 0) > 1)
                             _lot_sz = int(r.get("lot") or 1)
                             if _is_sme:
