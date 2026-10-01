@@ -1038,6 +1038,57 @@ with tab_ipo:
                         st.caption("Place the CNC delivery order in Kite only after it lists and trades inside the zone. "
                                    "The initial stop is mandatory; then manage the trade with the trail ladder below - "
                                    "Kite stops don't ratchet by themselves, so raise the SL-M/GTT after each new high.")
+                        with st.expander("Place buy order (CNC delivery)", key="ipo_order_exp_" + pick_s):
+                            _is_sme = bool(r.get("cat") == "SME") or bool(r.get("lot", 0) > 1)
+                            _lot_sz = int(r.get("lot") or 1)
+                            if _is_sme:
+                                st.caption("SME issue — trades in lots of {} shares on NSE Emerge. "
+                                           "Minimum order = {}, multiples of {}."
+                                           .format(_lot_sz, _lot_sz, _lot_sz))
+                            _sym = st.text_input("Trading symbol on NSE",
+                                                 value=r["name"], key="ipo_osym_" + pick_s)
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                _qty = st.number_input("Quantity",
+                                                       min_value=_lot_sz if _is_sme else 1,
+                                                       step=_lot_sz if _is_sme else 1,
+                                                       value=max(int(plan["qty"]), _lot_sz if _is_sme else 1),
+                                                       key="ipo_oqty_" + pick_s)
+                            with c2:
+                                _otype = st.selectbox("Order type", ["LIMIT", "MARKET"],
+                                                       key="ipo_otype_" + pick_s)
+                            _price = st.number_input("Limit price (ignored for MARKET)", min_value=0.01,
+                                                     value=float(plan["entry"]), key="ipo_oprice_" + pick_s)
+                            _cost = float(_qty) * float(_price)
+                            _cpct = _cost / capital * 100 if capital else 0
+                            st.caption("Order Rs {:,.0f} ({:.1f}% of capital)".format(_cost, _cpct))
+                            if _cost > capital * risk_pct / 100:
+                                st.warning("Above your risk budget of Rs {:,.0f} — this lot exceeds "
+                                           "your normal {}% risk limit."
+                                           .format(capital * risk_pct / 100, risk_pct))
+                            _ok = st.checkbox("I confirm this places a real order in my Zerodha account",
+                                              key="ipo_oplace_ok_" + pick_s)
+                            if st.button("PLACE BUY ORDER", type="primary", disabled=not _ok,
+                                          use_container_width=True, key="ipo_oplace_btn_" + pick_s):
+                                _km = kite_mcp_client()
+                                _st, _det = _km.status()
+                                if _st != "live":
+                                    st.error("Not connected to Kite — log in from the sidebar first.")
+                                else:
+                                    try:
+                                        _res = _km.place_order(
+                                            tradingsymbol=str(_sym).strip().upper(),
+                                            transaction_type="BUY",
+                                            quantity=int(_qty),
+                                            product="CNC",
+                                            order_type=str(_otype),
+                                            price=float(_price) if _otype == "LIMIT" else None,
+                                            tag="SQD-IPO")
+                                        _oid = _res.get("order_id") if isinstance(_res, dict) else None
+                                        st.success("Order placed" + ("! ID: " + str(_oid) if _oid else "") +
+                                                   " — track it in My Trades > Orders placed from the app.")
+                                    except Exception as _ex:
+                                        st.error("Order failed: " + str(_ex))
                         with st.expander("After you actually buy - log it to the journal"):
                             with st.form("ipo_log_" + pick_s):
                                 sym_in = st.text_input("NSE symbol in Kite", value=r["name"])
