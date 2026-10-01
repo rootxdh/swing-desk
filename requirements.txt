@@ -1,0 +1,9 @@
+yfinance<1.0
+pandas
+numpy<2
+matplotlib
+streamlit
+plotly
+kiteconnect
+psycopg2-binary
+jinja2>=3.1.2

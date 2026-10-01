@@ -1,0 +1,17 @@
+# Secrets - never commit
+zerodha/.env
+zerodha/token.json
+.streamlit/secrets.toml
+
+# Local user data and caches
+data/
+journal/
+reports/
+settings.json
+
+# Python / tooling
+__pycache__/
+*.pyc
+venv/
+.playwright-mcp/
+*.log
