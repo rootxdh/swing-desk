@@ -989,7 +989,7 @@ with tab_ipo:
                 m = r.get("_sub_match") or {}
                 dd = (r["listing_dt"] - dt.date.today()).days if r["listing_dt"] else None
                 t.append({
-                    "Name": r["name"], "Cat": r["cat"],
+                    "Name": r["name"], "Cat": r["cat"] + (" lot" if r["cat"] == "SME" else ""),
                     "Lists": (str(r["listing_dt"]) + (" (today)" if dd == 0 else (" (tomorrow)" if dd == 1 else "")))
                              if r["listing_dt"] else "-",
                     "Issue Rs": r["price"], "GMP Rs": r["gmp_rs"], "GMP %": r["gmp_pct"],
@@ -1008,7 +1008,8 @@ with tab_ipo:
             pick_s = st.selectbox("Listing-day plan", ["-"] + soon_names, key="ipo_pick_soon")
             if pick_s and pick_s != "-":
                 r = next(x for x in soon if x["name"] == pick_s)
-                st.markdown("### " + r["name"] + " (" + r["cat"] + ") - " + r["_lab"])
+                _cat_tag = r["cat"] + (" - lot trading only" if r.get("cat") == "SME" else "")
+                st.markdown("### " + r["name"] + " (" + _cat_tag + ") - " + r["_lab"])
                 st.caption("Lists " + str(r["listing_dt"]) + " | issue Rs " + fmt(r["price"]) + " | GMP Rs " +
                            fmt(r["gmp_rs"], 1) + " (" + format(r["gmp_pct"] or 0, ".1f") + "%) | peak GMP Rs " +
                            fmt(r["gmp_peak"], 1) + " | sub " + fmt(r["sub"], 1) + "x")
@@ -1042,7 +1043,7 @@ with tab_ipo:
                             _is_sme = bool(r.get("cat") == "SME") or bool(r.get("lot", 0) > 1)
                             _lot_sz = int(r.get("lot") or 1)
                             if _is_sme:
-                                st.caption("SME issue — trades in lots of {} shares on NSE Emerge. "
+                                st.warning("SME issue — trades in lots of {} shares on NSE Emerge. "
                                            "Minimum order = {}, multiples of {}."
                                            .format(_lot_sz, _lot_sz, _lot_sz))
                             _sym = st.text_input("Trading symbol on NSE",
@@ -1165,7 +1166,7 @@ with tab_ipo:
                 m = r.get("_sub_match") or {}
                 dd = (r["close_dt"] - dt.date.today()).days if r["close_dt"] else None
                 t.append({
-                    "Name": r["name"], "Cat": r["cat"],
+                    "Name": r["name"], "Cat": r["cat"] + (" lot" if r["cat"] == "SME" else ""),
                     "Closes": (str(r["close_dt"]) + (" (today)" if dd == 0 else
                                (" (" + str(dd) + "d left)" if dd is not None and dd > 0 else "")))
                               if r["close_dt"] else "-",
@@ -1208,7 +1209,7 @@ with tab_ipo:
             rec = sorted([r for r in perf if r["gmp_pct"] is not None and r["listing_gain"] is not None],
                          key=_ldate, reverse=True)[:25]
             st.dataframe(pd.DataFrame([{
-                "Name": r["name"], "Cat": r["cat"], "Listed": r["listing_dt"],
+                "Name": r["name"], "Cat": r["cat"] + (" lot" if r["cat"] == "SME" else ""), "Listed": r["listing_dt"],
                 "GMP %": r["gmp_pct"], "Listing gain %": r["listing_gain"],
                 "close - listing %": r["drift"], "Sub x": r["sub"],
             } for r in rec]), use_container_width=True, hide_index=True)
