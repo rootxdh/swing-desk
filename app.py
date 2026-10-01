@@ -1097,12 +1097,47 @@ with tab_ipo:
                                 entry_in = st.number_input("Entry price", min_value=0.01, value=float(plan["entry"]))
                                 stop_in = st.number_input("Stop", min_value=0.01, value=float(plan["stop"]))
                                 tgt_in = st.number_input("Target", min_value=0.01, value=float(plan["target"]))
-                                if st.form_submit_button("Log IPO trade as OPEN"):
-                                    engine.add_trade(sym_in.strip().upper(), int(qty_in), float(entry_in),
-                                                     float(stop_in), float(tgt_in),
-                                                     "IPO listing play (GMP " + format(r["gmp_pct"] or 0, ".0f") + "%)",
-                                                     r["_lab"], "IPO desk", side="long")
-                                    st.success("Logged - track it in My Trades; exit guidance starts from the first quote.")
+                                lc1, lc2 = st.columns(2)
+                                with lc1:
+                                    log_btn = st.form_submit_button("Log trade only", use_container_width=True)
+                                with lc2:
+                                    prot_btn = st.form_submit_button("Log + protect (GTTs)",
+                                                                     type="primary", use_container_width=True)
+                                if log_btn or prot_btn:
+                                    sym_str = sym_in.strip().upper()
+                                    qty_int = int(qty_in)
+                                    entry_f = float(entry_in)
+                                    stop_f = float(stop_in)
+                                    tgt_f = float(tgt_in)
+                                    setup_str = "IPO listing play (GMP " + format(r["gmp_pct"] or 0, ".0f") + "%)"
+                                    tid = engine.add_trade(sym_str, qty_int, entry_f, stop_f, tgt_f,
+                                                            setup_str, r["_lab"], "IPO desk", side="long")
+                                    notes = []
+                                    if prot_btn:
+                                        km_ = kite_mcp_client()
+                                        stt, _ = km_.status()
+                                        if stt == "live":
+                                            try:
+                                                lpx = km_.ltp([sym_str]).get(sym_str)
+                                                if lpx:
+                                                    km_.place_gtt(tradingsymbol=sym_str, transaction_type="SELL",
+                                                                  product="CNC", trigger_type="two-leg",
+                                                                  last_price=float(lpx),
+                                                                  upper_trigger_value=tgt_f,
+                                                                  upper_limit_price=round(tgt_f * 0.995, 2),
+                                                                  upper_quantity=qty_int,
+                                                                  lower_trigger_value=stop_f,
+                                                                  lower_limit_price=round(stop_f * 0.995, 2),
+                                                                  lower_quantity=qty_int)
+                                                    notes.append("protective GTT placed")
+                                                else:
+                                                    notes.append("no live price — place GTT in My Trades > Manage")
+                                            except Exception as ex:
+                                                notes.append("GTT failed: " + str(ex))
+                                        else:
+                                            notes.append("Kite not connected — place GTT in My Trades > Manage")
+                                    st.success("Trade #" + str(tid) + " logged" +
+                                               (" — " + "; ".join(notes) if notes else " — track in My Trades"))
                     elif plan:
                         for f in plan["flags"]:
                             st.warning(f)
