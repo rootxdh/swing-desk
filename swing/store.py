@@ -21,6 +21,7 @@ CLI:
 import argparse
 import json
 import os
+import re
 import threading
 from urllib.parse import urlparse
 
@@ -72,13 +73,23 @@ def have_db():
     return db_url() is not None
 
 
+def _scrub(msg):
+    """Hide any user:password that libpq might echo back in its error text."""
+    return re.sub(r"://[^@\s\"']+@", "://***@", msg)
+
+
 def _connect():
     url = db_url()
     if not url:
         raise StoreError("DATABASE_URL is not set - the app is in file mode.")
     if psycopg2 is None:
         raise StoreError("DATABASE_URL is set but psycopg2 is missing (pip install psycopg2-binary).")
-    return psycopg2.connect(url, connect_timeout=15)
+    try:
+        return psycopg2.connect(url, connect_timeout=15)
+    except psycopg2.Error as e:
+        # Streamlit Cloud redacts raw OperationalError text (it can carry the DSN).
+        # Our own error type is shown as-is, so the real reason stays visible.
+        raise StoreError("Postgres connection failed: " + _scrub(str(e) or e.__class__.__name__)) from None
 
 
 def _with_conn(fn):
@@ -218,7 +229,7 @@ def status():
         out.append("app_state keys: " + (", ".join(k + " (" + str(t)[:16] + ")" for k, t in keys)
                                          if keys else "none"))
     except Exception as e:
-        out.append("connection failed: " + str(e))
+        out.append("connection failed: " + _scrub(str(e)))
     return out
 
 
